@@ -2,6 +2,7 @@ package com.example.ruslan.geoquiz;
 
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
@@ -10,6 +11,9 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 public class QuizActivity extends AppCompatActivity {
+
+    private static final String TAG = "QuizActivity";
+    private static final String KEY_INDEX = "index";
 
     private Button mTrueButton;
     private Button mFalseButton;
@@ -27,11 +31,17 @@ public class QuizActivity extends AppCompatActivity {
     };
 
     private int mCurrentIndex = 0;
+    private int correctAnswerCount = 0;
 
     @Override
     protected void onCreate(final Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Log.d(TAG, "onCreate(Bundle) called");
         setContentView(R.layout.activity_quiz);
+
+        if (savedInstanceState != null) {
+            mCurrentIndex = savedInstanceState.getInt(KEY_INDEX, 0);
+        }
 
         mQuestionTextView = (TextView) findViewById(R.id.question_text_view);
         mQuestionTextView.setOnClickListener(new View.OnClickListener() {
@@ -79,24 +89,89 @@ public class QuizActivity extends AppCompatActivity {
         updateQuestion();
     }
 
+    @Override
+    public void onStart() {
+        super.onStart();
+        Log.d(TAG, "onStart() called");
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        Log.d(TAG, "onResume() called");
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        Log.d(TAG, "onPause() called");
+    }
+
+    @Override
+    public void onSaveInstanceState(Bundle savedInstanceState) {
+        super.onSaveInstanceState(savedInstanceState);
+        Log.i(TAG, "onSaveInstanceState");
+        savedInstanceState.putInt(KEY_INDEX, mCurrentIndex);
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+        Log.d(TAG, "onStop() called");
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        Log.d(TAG, "onDestroy() called");
+    }
+
     private void updateQuestion() {
         int question = mQuestionBank[mCurrentIndex].getTextResId();
         mQuestionTextView.setText(question);
+        setEnabledAnswerButtons(true);
     }
 
     private void checkAnswer(boolean userPressedTrue) {
+        setEnabledAnswerButtons(false);
+
+        // TODO: Math.abs как решение не очень подходит, если mQuestionBank представить как барабан
         boolean answerIsTrue = mQuestionBank[Math.abs(mCurrentIndex)].isAnswerTrue();
 
         int messageResId = 0;
 
         if (userPressedTrue == answerIsTrue) {
             messageResId = R.string.correct_toast;
+            correctAnswerCount++;
         } else {
             messageResId = R.string.incorrect_toast;
         }
 
-        Toast toast = Toast.makeText(this, messageResId, Toast.LENGTH_SHORT);
-        toast.setGravity(Gravity.TOP, 0, 200);
-        toast.show();
+        // После того как пользователь введет ответ на все вопросы,
+        // отобразить уведомление с процентом правильных ответов
+        if (mCurrentIndex == mQuestionBank.length - 1) {
+            int prcnt = Math.round(correctAnswerCount * 100 / mQuestionBank.length);
+            String percentCorrectAnswer =
+                    (userPressedTrue == answerIsTrue ? "Correct!" : "Incorrect!") +
+                            " Вы правильно ответили на " + prcnt + "% вопросов!";
+            Toast toastDone = Toast.makeText(this, percentCorrectAnswer, Toast.LENGTH_SHORT);
+            toastDone.setGravity(Gravity.TOP, 0, 200);
+            toastDone.show();
+        } else {
+            Toast toast = Toast.makeText(this, messageResId, Toast.LENGTH_SHORT);
+            toast.setGravity(Gravity.TOP, 0, 200);
+            toast.show();
+        }
+    }
+
+    /**
+     * Заблокировать/разблокировать кнопки этого вопроса,
+     * чтобы предотвратить возможность ввода нескольких ответов
+     *
+     * @param enabled
+     */
+    private void setEnabledAnswerButtons(boolean enabled) {
+        mTrueButton.setEnabled(enabled);
+        mFalseButton.setEnabled(enabled);
     }
 }
